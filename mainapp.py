@@ -1,12 +1,28 @@
+"""
+mainapp.py
+
+A modern Tkinter-based GUI application for image format conversion and background removal.
+
+Features:
+- Main menu with navigation buttons
+- Convert image format with file dialog and format selection
+- Remove image background with file dialog
+- Modular widgets and code structure
+"""
+
 import tkinter as tk
 from converter import convert_image
-from button import create_modern_button
-from tkinter import ttk
-from tkinter import filedialog
+from widgets import create_modern_button, entry_button, browse_file
+from tkinter import ttk, filedialog, messagebox
 
 
-# Main landing page
+# -------------------- Main Landing Page --------------------
 class MainPage(tk.Frame):
+    """
+    The main landing page of the application.
+    Shows the app title and navigation buttons for conversion and background removal.
+    """
+
     def __init__(self, parent, controller):
         super().__init__(parent)
         self.controller = controller
@@ -18,12 +34,23 @@ class MainPage(tk.Frame):
         self.setup_ui()
 
     def setup_ui(self):
+        """
+        Set up the main UI: background, title, and navigation buttons.
+        """
         self.canvas.create_image(0, 0, image=self.image, anchor=tk.NW)
         self.canvas.create_text(
-            582, 62, text="PLASTIC SURGERY", font=("Georgia", 28, "bold"), fill="gray"
+            (self.WIDTH // 2) - 18,
+            62,
+            text="PLASTIC SURGERY",
+            font=("Georgia", 28, "bold"),
+            fill="gray",
         )
         self.canvas.create_text(
-            580, 60, text="PLASTIC SURGERY", font=("Georgia", 28, "bold"), fill="black"
+            (self.WIDTH // 2) - 20,
+            60,
+            text="PLASTIC SURGERY",
+            font=("Georgia", 28, "bold"),
+            fill="black",
         )
         create_modern_button(
             self,
@@ -43,8 +70,13 @@ class MainPage(tk.Frame):
         )
 
 
-# Convert Format Page
+# -------------------- Convert Format Page --------------------
 class ConvertFormatPage(tk.Frame):
+    """
+    Page for converting image formats.
+    Allows user to select an image, choose output format, and save the result.
+    """
+
     def __init__(self, parent, controller):
         super().__init__(parent)
         self.controller = controller
@@ -56,38 +88,29 @@ class ConvertFormatPage(tk.Frame):
         )
         self.canvas.pack()
         self.canvas.create_image(0, 0, image=self.image, anchor=tk.NW)
+        self.browse_file = controller.browse_file
         self.setup_ui()
 
     def setup_ui(self):
+        """
+        Set up the UI for format conversion: file entry, browse, format dropdown, convert/back buttons, and key bindings.
+        """
         self.canvas.create_text(
-            400, 240, text="Enter File Path", font=("Georgia", 16, "bold"), fill="#333"
+            (self.WIDTH // 3),
+            (self.HEIGHT // 3) + 40,
+            text="Enter File Path",
+            font=("Georgia", 16, "bold"),
+            fill="#333",
         )
         self.image_path_var = tk.StringVar()
-        self.image_path = tk.Entry(
-            self,
-            textvariable=self.image_path_var,
-            font=("Arial", 16, "bold"),
-            width=32,
-            bd=2,
-            relief="groove",
-            fg="#333",
-            bg="#f0f4f8",
-            insertbackground="#333",
-            highlightthickness=2,
-            highlightcolor="#4a90e2",
+        self.image_path, self.browse_btn, back_button = entry_button(self)
+        self.canvas.create_window(
+            self.WIDTH // 3, (self.HEIGHT // 3) + 80, window=self.image_path
         )
-        self.canvas.create_window(400, 280, window=self.image_path)
-        browse_btn = tk.Button(
-            self,
-            text="Browse",
-            font=("Arial", 12),
-            command=self.browse_file,
-            bg="#e0e7ef",
-            fg="#333",
-            bd=2,
-            relief="groove",
+        self.canvas.create_window(
+            (self.WIDTH // 6) + 40, (self.HEIGHT // 2) + 20, window=self.browse_btn
         )
-        self.canvas.create_window(240, 320, window=browse_btn)
+        back_button.place(x=40, y=30)
         self.format_var = tk.StringVar(value="PNG")
         formats = ["JPEG", "PNG", "WEBP", "BMP", "TIFF", "GIF", "ICO"]
         style = ttk.Style()
@@ -103,41 +126,31 @@ class ConvertFormatPage(tk.Frame):
         format_dropdown = ttk.OptionMenu(self, self.format_var, formats[0], *formats)
         format_dropdown.config(style="Custom.TMenubutton")
         format_dropdown["menu"].config(font=("Arial", 12), bg="#f0f4f8", fg="#333")
-        self.canvas.create_window(800, 280, window=format_dropdown)
+        self.canvas.create_window(
+            self.WIDTH - 400, (self.HEIGHT // 3) + 80, window=format_dropdown
+        )
         self.canvas.create_text(
             650, 280, text="➡", font=("Arial", 24, "bold"), fill="#4a90e2"
         )
-        create_modern_button(
-            self, "Convert", self.WIDTH // 2, 380, canvas=self.canvas, command=self.convert_action
-        )
-        # Back button to return to main page
-        back_button = tk.Button(
+        convert_btn = create_modern_button(
             self,
-            text="Back",
-            command=lambda: self.controller.show_frame("MainPage"),
-            font=("Arial", 14, "bold"),
-            bg="#e0e7ef",
-            fg="#333",
-            bd=2,
-            relief="groove",
+            "Convert",
+            self.WIDTH // 2,
+            (self.HEIGHT // 2) + 80,
+            canvas=self.canvas,
+            command=self.convert_action,
         )
-        back_button.place(x=40, y=30)
-
-    def browse_file(self):
-        file_path = filedialog.askopenfilename(
-            filetypes=[
-                ("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.webp;*.tiff;*.gif;*.ico"),
-                ("All Files", "*.*"),
-            ],
-            title="Select Image File",
-        )
-        if file_path:
-            self.image_path_var.set(file_path)
 
     def convert_action(self):
+        """
+        Convert the selected image to the chosen format and save it.
+        Shows error/info dialogs as needed.
+        """
         path = self.image_path.get()
         target_format = self.format_var.get()
-        # Ask user where to save the converted file
+        if not path:
+            messagebox.showerror("Error", "Please enter a valid file path.")
+            return
         filetypes = [
             (f"{target_format} files", f"*.{target_format.lower()}"),
             ("All files", "*.*"),
@@ -149,12 +162,21 @@ class ConvertFormatPage(tk.Frame):
         )
         if save_path:
             convert_image(path, target_format, save_path)
+            messagebox.showinfo("Success", "Image converted and saved successfully!")
         else:
-            print("Save cancelled.")
+            messagebox.showinfo("Cancelled", "Conversion cancelled.")
 
 
-# Background Remover Page
+# -------------------- Background Remover Page --------------------
 class BackgroundRemoverPage(tk.Frame):
+    """
+    Page for removing the background from an image.
+    Allows user to select an image and save the result with background removed.
+    Keyboard shortcuts:
+        - Escape: Go back to main page
+        - Enter: Remove background
+    """
+
     def __init__(self, parent, controller):
         super().__init__(parent)
         self.controller = controller
@@ -166,9 +188,13 @@ class BackgroundRemoverPage(tk.Frame):
         )
         self.canvas.pack()
         self.canvas.create_image(0, 0, image=self.image, anchor=tk.NW)
+        self.browse_file = controller.browse_file
         self.setup_ui()
 
     def setup_ui(self):
+        """
+        Set up the UI for background removal: file entry, browse
+        """
         # Center left: Show bgrem.png
         self.bgrem_img = tk.PhotoImage(file="assets/bgrem.png")
         self.canvas.create_image(350, 280, image=self.bgrem_img, anchor=tk.CENTER)
@@ -177,62 +203,25 @@ class BackgroundRemoverPage(tk.Frame):
             870, 240, text="Enter File Path", font=("Georgia", 16, "bold"), fill="#333"
         )
         self.image_path_var = tk.StringVar()
-        self.image_path = tk.Entry(
-            self,
-            textvariable=self.image_path_var,
-            font=("Arial", 16, "bold"),
-            width=32,
-            bd=2,
-            relief="groove",
-            fg="#333",
-            bg="#f0f4f8",
-            insertbackground="#333",
-            highlightthickness=2,
-            highlightcolor="#4a90e2",
-        )
+        self.image_path, self.browse_btn, back_button = entry_button(
+            self
+        )  # function called
         self.canvas.create_window(850, 280, window=self.image_path)
-        browse_btn = tk.Button(
-            self,
-            text="Browse",
-            font=("Arial", 12),
-            command=self.browse_file,
-            bg="#e0e7ef",
-            fg="#333",
-            bd=2,
-            relief="groove",
-        )
-        self.canvas.create_window(1100, 280, window=browse_btn)
-        # Convert button below
-        create_modern_button(
+        self.canvas.create_window(1100, 280, window=self.browse_btn)
+        back_button.place(x=40, y=30)
+        convert_btn = create_modern_button(
             self, "Remove", 860, 350, canvas=self.canvas, command=self.remove_bg_action
         )
-        # Back button (same as ConvertFormatPage)
-        back_button = tk.Button(
-            self,
-            text="Back",
-            command=lambda: self.controller.show_frame("MainPage"),
-            font=("Arial", 14, "bold"),
-            bg="#e0e7ef",
-            fg="#333",
-            bd=2,
-            relief="groove",
-        )
-        back_button.place(x=40, y=30)
-
-    def browse_file(self):
-        file_path = filedialog.askopenfilename(
-            filetypes=[
-                ("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.webp;*.tiff;*.gif;*.ico"),
-                ("All Files", "*.*"),
-            ],
-            title="Select Image File",
-        )
-        if file_path:
-            self.image_path_var.set(file_path)
 
     def remove_bg_action(self):
+        """
+        Remove the background from the selected image and save it.
+        Shows error/info dialogs as needed.
+        """
         path = self.image_path.get()
-        # Ask user where to save the output file
+        if not path:
+            messagebox.showerror("Error", "Please enter a valid file path.")
+            return
         filetypes = [("PNG files", "*.png"), ("All files", "*.*")]
         save_path = filedialog.asksaveasfilename(
             defaultextension=".png",
@@ -240,16 +229,24 @@ class BackgroundRemoverPage(tk.Frame):
             title="Save Image With Background Removed As...",
         )
         if save_path:
-            # You should implement/remove_background in converter.py
+            messagebox.showinfo(
+                "Processing", "Removing background may take time... Please wait."
+            )
             from converter import remove_background
 
             remove_background(path, save_path)
+            messagebox.showinfo("Success", "Background removed and saved successfully!")
         else:
-            print("Save cancelled.")
+            messagebox.showinfo("Cancelled", "Background removal cancelled.")
 
 
-# main app.py
+# -------------------- Main Application Controller --------------------
 class PlasticSurgeryApp:
+    """
+    The main application controller.
+    Manages window, navigation, and page switching.
+    """
+
     def __init__(self, root):
         self.root = root
         self.WIDTH, self.HEIGHT = 1200, 600
@@ -257,16 +254,17 @@ class PlasticSurgeryApp:
         self.root.geometry(f"{self.WIDTH}x{self.HEIGHT}")
         self.root.iconbitmap("assets\\icon.ico")
         self.image = tk.PhotoImage(file="assets\\bg2.png")
-        # Create a container frame to hold all pages
         self.container = tk.Frame(self.root)
         self.container.pack(fill="both", expand=True)
-        # Dictionary to hold page frames
+        self.browse_file = browse_file
         self.frames = {}
         self.init_pages()
         self.show_frame("MainPage")
 
     def init_pages(self):
-        # Create and store all pages
+        """
+        Create and store all pages (frames) for the app.
+        """
         self.frames["MainPage"] = MainPage(parent=self.container, controller=self)
         self.frames["ConvertFormatPage"] = ConvertFormatPage(
             parent=self.container, controller=self
@@ -278,11 +276,12 @@ class PlasticSurgeryApp:
             frame.grid(row=0, column=0, sticky="nsew")
 
     def show_frame(self, page_name):
-        # Bring the selected page to the front
+        """Show the requested page"""
         frame = self.frames[page_name]
         frame.tkraise()
 
     def run(self):
+        """Start the Tkinter main loop."""
         self.root.mainloop()
 
 
